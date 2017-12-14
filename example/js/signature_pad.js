@@ -186,6 +186,28 @@ function SignaturePad(canvas, options) {
     }
   };
 
+  this._handlePointerStart = function (event) {
+    this._drawningStroke = true;
+    event.preventDefault();
+    self._strokeBegin(event);
+  };
+
+  this._handlePointerMove = function (event) {
+    if (this._drawningStroke) {
+      event.preventDefault();
+      self._strokeMoveUpdate(event);
+    }
+  };
+
+  this._handlePointerEnd = function (event) {
+    this._drawningStroke = false;
+    var wasCanvasTouched = event.target === self._canvas;
+    if (wasCanvasTouched) {
+      event.preventDefault();
+      self._strokeEnd(event);
+    }
+  };
+
   // Enable mouse and touch event handlers
   this.on();
 }
@@ -240,13 +262,14 @@ SignaturePad.prototype.toDataURL = function (type) {
 SignaturePad.prototype.on = function () {
   this._handleMouseEvents();
   this._handleTouchEvents();
+  this._handlePointerEvents();
 };
 
 SignaturePad.prototype.off = function () {
   // Pass touch events to canvas element on mobile IE11 and Edge.
   this._canvas.style.msTouchAction = 'auto';
   this._canvas.style.touchAction = 'auto';
-  
+
   this._canvas.removeEventListener('mousedown', this._handleMouseDown);
   this._canvas.removeEventListener('mousemove', this._handleMouseMove);
   document.removeEventListener('mouseup', this._handleMouseUp);
@@ -254,6 +277,10 @@ SignaturePad.prototype.off = function () {
   this._canvas.removeEventListener('touchstart', this._handleTouchStart);
   this._canvas.removeEventListener('touchmove', this._handleTouchMove);
   this._canvas.removeEventListener('touchend', this._handleTouchEnd);
+
+  this._canvas.removeEventListener('pointerdown', this._handlePointerStart);
+  this._canvas.removeEventListener('pointermove', this._handlePointerMove);
+  this._canvas.removeEventListener('pointerup', this._handlePointerEnd);
 };
 
 SignaturePad.prototype.isEmpty = function () {
@@ -293,6 +320,7 @@ SignaturePad.prototype._strokeUpdate = function (event) {
     this._data[this._data.length - 1].push({
       x: point.x,
       y: point.y,
+      p: event.pressure,
       time: point.time,
       color: this.penColor
     });
@@ -317,6 +345,7 @@ SignaturePad.prototype._strokeEnd = function (event) {
       lastPointGroup.push({
         x: point.x,
         y: point.y,
+        p: point.pressure,
         time: point.time,
         color: this.penColor
       });
@@ -344,6 +373,14 @@ SignaturePad.prototype._handleTouchEvents = function () {
   this._canvas.addEventListener('touchstart', this._handleTouchStart);
   this._canvas.addEventListener('touchmove', this._handleTouchMove);
   this._canvas.addEventListener('touchend', this._handleTouchEnd);
+};
+
+SignaturePad.prototype._handlePointerEvents = function () {
+  if (window.PointerEvent) {
+    this._canvas.addEventListener('pointerdown', this._handlePointerStart);
+    this._canvas.addEventListener('pointermove', this._handlePointerMove);
+    this._canvas.addEventListener('pointerup', this._handlePointerEnd);
+  }
 };
 
 SignaturePad.prototype._reset = function () {
